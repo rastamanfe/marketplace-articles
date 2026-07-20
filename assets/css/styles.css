@@ -342,15 +342,6 @@ main {
   gap: 14px;
 }
 
-.filter-note {
-  border-left: 4px solid var(--blue);
-  background: #eef5fb;
-  color: #365263;
-  padding: 10px 12px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
 .products-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));

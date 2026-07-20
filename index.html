@@ -68,9 +68,6 @@
               </label>
             </div>
 
-            <div class="filter-note">
-              Les filtres interrogent directement la base SQLite via l'API serveur.
-            </div>
           </aside>
 
           <section class="catalog-panel" aria-labelledby="catalogTitle">
@@ -191,6 +188,11 @@
               <label>
                 Video demo URL
                 <input id="productVideo" type="text" placeholder="https://... YouTube, MP4, WebM ou autre lien video" />
+              </label>
+
+              <label>
+                Choisir une video sur le PC
+                <input id="productVideoFile" type="file" accept="video/mp4,video/webm,video/ogg,video/*" />
               </label>
 
               <div class="image-preview" id="productImagePreview">

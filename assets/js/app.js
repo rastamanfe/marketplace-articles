@@ -79,11 +79,14 @@ const productFields = {
   image: document.querySelector("#productImage"),
   imageFile: document.querySelector("#productImageFile"),
   video: document.querySelector("#productVideo"),
+  videoFile: document.querySelector("#productVideoFile"),
   shortDescription: document.querySelector("#productShort"),
   description: document.querySelector("#productDescription"),
   specs: document.querySelector("#productSpecs"),
   tags: document.querySelector("#productTags"),
 };
+
+const maxLocalVideoBytes = 24 * 1024 * 1024;
 
 const categoryFields = {
   id: document.querySelector("#categoryId"),
@@ -575,6 +578,7 @@ function fillProductForm(product) {
   productFields.stock.value = product.stock;
   productFields.image.value = product.image;
   productFields.video.value = product.videoUrl || "";
+  productFields.videoFile.value = "";
   productFields.shortDescription.value = product.shortDescription;
   productFields.description.value = product.description;
   productFields.specs.value = product.specs.join("\n");
@@ -593,11 +597,11 @@ function updateImagePreview() {
     : "<span>Aucune image selectionnee</span>";
 }
 
-function readImageFile(file) {
+function readFileAsDataUrl(file, errorMessage) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Lecture de l'image impossible"));
+    reader.onerror = () => reject(new Error(errorMessage));
     reader.readAsDataURL(file);
   });
 }
@@ -616,7 +620,7 @@ async function compressLocalImage(file) {
     throw new Error("Le fichier choisi n'est pas une image");
   }
 
-  const dataUrl = await readImageFile(file);
+  const dataUrl = await readFileAsDataUrl(file, "Lecture de l'image impossible");
   const image = await loadImage(dataUrl);
   const maxSize = 1100;
   const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
@@ -630,6 +634,18 @@ async function compressLocalImage(file) {
   context.drawImage(image, 0, 0, width, height);
 
   return canvas.toDataURL("image/jpeg", 0.84);
+}
+
+async function importLocalVideo(file) {
+  if (!file.type.startsWith("video/")) {
+    throw new Error("Le fichier choisi n'est pas une video");
+  }
+
+  if (file.size > maxLocalVideoBytes) {
+    throw new Error("Video trop volumineuse. Taille maximum: 24 Mo");
+  }
+
+  return readFileAsDataUrl(file, "Lecture de la video impossible");
 }
 
 function collectProductForm() {
@@ -875,6 +891,17 @@ function bindEvents() {
     } catch (error) {
       showToast(error.message);
       productFields.imageFile.value = "";
+    }
+  });
+  productFields.videoFile.addEventListener("change", async () => {
+    const file = productFields.videoFile.files[0];
+    if (!file) return;
+    try {
+      productFields.video.value = await importLocalVideo(file);
+      showToast("Video locale ajoutee a l'article");
+    } catch (error) {
+      showToast(error.message);
+      productFields.videoFile.value = "";
     }
   });
 

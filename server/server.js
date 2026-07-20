@@ -9,7 +9,7 @@ const { Pool } = pg;
 
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = path.join(rootDir, "data");
 const dbPath = path.join(dataDir, "marketplace.db");
@@ -709,7 +709,7 @@ async function readBody(req) {
   for await (const chunk of req) {
     total += chunk.length;
     if (total > MAX_BODY_BYTES) {
-      const error = new Error("Image ou donnees trop volumineuses. Taille maximum: 8 Mo");
+      const error = new Error("Image, video ou donnees trop volumineuses. Taille maximum: 32 Mo");
       error.status = 413;
       throw error;
     }
