@@ -185,6 +185,7 @@ function rowToProduct(row) {
     rating: Number(row.rating),
     reviews: Number(row.reviews),
     image: row.image,
+    videoUrl: row.video_url || "",
     shortDescription: row.short_description,
     description: row.description,
     specs: parseJsonList(row.specs),
@@ -345,6 +346,7 @@ function sqliteSchema() {
       rating REAL NOT NULL DEFAULT 0,
       reviews INTEGER NOT NULL DEFAULT 0,
       image TEXT NOT NULL DEFAULT '',
+      video_url TEXT NOT NULL DEFAULT '',
       short_description TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
       specs TEXT NOT NULL DEFAULT '[]',
@@ -400,6 +402,7 @@ function postgresSchema() {
       rating DOUBLE PRECISION NOT NULL DEFAULT 0,
       reviews INTEGER NOT NULL DEFAULT 0,
       image TEXT NOT NULL DEFAULT '',
+      video_url TEXT NOT NULL DEFAULT '',
       short_description TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
       specs TEXT NOT NULL DEFAULT '[]',
@@ -434,6 +437,7 @@ function postgresSchema() {
 
 async function initializeDatabase(db) {
   await db.exec(db.kind === "postgresql" ? postgresSchema() : sqliteSchema());
+  await ensureProductVideoColumn(db);
 
   const categoryCount = Number((await db.get("SELECT COUNT(*) AS total FROM categories")).total);
   if (categoryCount === 0) {
@@ -450,6 +454,18 @@ async function initializeDatabase(db) {
   }
 
   await migrateSeedProductPricesToAriary(db);
+}
+
+async function ensureProductVideoColumn(db) {
+  if (db.kind === "postgresql") {
+    await db.exec("ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT NOT NULL DEFAULT ''");
+    return;
+  }
+
+  const columns = await db.all("PRAGMA table_info(products)");
+  if (!columns.some((column) => column.name === "video_url")) {
+    await db.exec("ALTER TABLE products ADD COLUMN video_url TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 async function migrateSeedProductPricesToAriary(db) {
@@ -599,6 +615,7 @@ function normalizeProductInput(input, current = {}) {
     rating: Math.min(5, Math.max(0, Number(input.rating ?? current.rating ?? 0) || 0)),
     reviews: Math.max(0, Number.parseInt(input.reviews ?? current.reviews ?? 0, 10) || 0),
     image: String(input.image ?? current.image ?? "").trim(),
+    videoUrl: String(input.videoUrl ?? input.video_url ?? current.videoUrl ?? "").trim(),
     shortDescription: String(input.shortDescription ?? input.short_description ?? current.shortDescription ?? "").trim(),
     description: String(input.description ?? current.description ?? "").trim(),
     specs: parseJsonList(input.specs ?? current.specs),
@@ -611,8 +628,8 @@ async function insertProduct(db, input, options = {}) {
   const result = await db.run(
     `INSERT INTO products (
       name, slug, sku, brand, category, price, old_price, stock, rating, reviews,
-      image, short_description, description, specs, tags
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      image, video_url, short_description, description, specs, tags
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       input.name,
       options.seedSlug || input.slug,
@@ -625,6 +642,7 @@ async function insertProduct(db, input, options = {}) {
       input.rating,
       input.reviews,
       input.image,
+      input.videoUrl,
       input.shortDescription,
       input.description,
       JSON.stringify(input.specs),
@@ -640,7 +658,7 @@ async function updateProduct(db, id, input) {
   await db.run(
     `UPDATE products
      SET name = ?, sku = ?, brand = ?, category = ?, price = ?, old_price = ?, stock = ?,
-         rating = ?, reviews = ?, image = ?, short_description = ?, description = ?,
+         rating = ?, reviews = ?, image = ?, video_url = ?, short_description = ?, description = ?,
          specs = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = ?`,
     [
@@ -654,6 +672,7 @@ async function updateProduct(db, id, input) {
       input.rating,
       input.reviews,
       input.image,
+      input.videoUrl,
       input.shortDescription,
       input.description,
       JSON.stringify(input.specs),

@@ -42,6 +42,7 @@ const els = {
   clearCart: document.querySelector("#clearCart"),
   checkoutButton: document.querySelector("#checkoutButton"),
   productDialog: document.querySelector("#productDialog"),
+  videoDialog: document.querySelector("#videoDialog"),
   checkoutDialog: document.querySelector("#checkoutDialog"),
   checkoutForm: document.querySelector("#checkoutForm"),
   adminProducts: document.querySelector("#adminProducts"),
@@ -77,6 +78,7 @@ const productFields = {
   stock: document.querySelector("#productStock"),
   image: document.querySelector("#productImage"),
   imageFile: document.querySelector("#productImageFile"),
+  video: document.querySelector("#productVideo"),
   shortDescription: document.querySelector("#productShort"),
   description: document.querySelector("#productDescription"),
   specs: document.querySelector("#productSpecs"),
@@ -218,6 +220,7 @@ function renderProducts() {
       const oldPrice = product.oldPrice ? `<span class="old-price">${money.format(product.oldPrice)}</span>` : "";
       const stockText = product.stock > 0 ? `${product.stock} en stock` : "Rupture";
       const disabled = product.stock <= 0 ? "disabled" : "";
+      const demoButton = renderDemoButton(product);
       return `
         <article class="product-card">
           <div class="product-media">
@@ -236,6 +239,7 @@ function renderProducts() {
             <div class="stock-line">${stockText}</div>
             <div class="card-actions">
               <button class="secondary-button" type="button" data-action="details" data-id="${product.id}">Details</button>
+              ${demoButton}
               <button class="primary-button" type="button" data-action="add-cart" data-id="${product.id}" ${disabled}>Ajouter</button>
             </div>
           </div>
@@ -369,11 +373,91 @@ async function getProduct(id) {
   return cached || request(`/api/products/${id}`);
 }
 
+function productHasDemo(product) {
+  return Boolean(String(product.videoUrl || "").trim());
+}
+
+function getYouTubeEmbedUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+
+    if (host === "youtu.be") {
+      const videoId = parsed.pathname.split("/").filter(Boolean)[0];
+      return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : "";
+    }
+
+    if (host.endsWith("youtube.com")) {
+      if (parsed.pathname.startsWith("/embed/")) return parsed.href;
+      const videoId = parsed.searchParams.get("v") || parsed.pathname.split("/").filter(Boolean)[1];
+      return videoId ? `https://www.youtube.com/embed/${encodeURIComponent(videoId)}` : "";
+    }
+  } catch {
+    return "";
+  }
+
+  return "";
+}
+
+function normalizeDemoVideoUrl(value) {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (/^data:video\//i.test(url)) return url;
+
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return getYouTubeEmbedUrl(parsed.href) || parsed.href;
+  } catch {
+    return "";
+  }
+}
+
+function isDirectVideoUrl(url) {
+  return /^data:video\//i.test(url) || /\.(mp4|webm|ogg)(\?|#|$)/i.test(url);
+}
+
+function renderDemoButton(product, extraClass = "") {
+  if (!productHasDemo(product)) return "";
+  const className = ["secondary-button", extraClass].filter(Boolean).join(" ");
+  return `<button class="${className}" type="button" data-action="demo" data-id="${product.id}">Demo</button>`;
+}
+
+async function openProductDemo(id) {
+  const product = await getProduct(id);
+  const videoUrl = normalizeDemoVideoUrl(product.videoUrl);
+  if (!videoUrl) {
+    showToast("Aucune video demo valide pour cet article");
+    return;
+  }
+
+  const player = isDirectVideoUrl(videoUrl)
+    ? `<video class="demo-video" src="${escapeHtml(videoUrl)}" controls autoplay></video>`
+    : `<iframe class="demo-video" src="${escapeHtml(videoUrl)}" title="Video demo ${escapeHtml(
+        product.name,
+      )}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+
+  els.videoDialog.innerHTML = `
+    <div class="video-box">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">${escapeHtml(product.category)} - ${escapeHtml(product.sku)}</p>
+          <h2>Demo ${escapeHtml(product.name)}</h2>
+        </div>
+        <form method="dialog"><button class="icon-button" type="submit">X</button></form>
+      </div>
+      ${player}
+    </div>
+  `;
+  els.videoDialog.showModal();
+}
+
 async function openProductDetail(id) {
   const product = await getProduct(id);
   const specs = product.specs.map((spec) => `<li>${escapeHtml(spec)}</li>`).join("");
   const tags = product.tags.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("");
   const oldPrice = product.oldPrice ? `<span class="old-price">${money.format(product.oldPrice)}</span>` : "";
+  const demoButton = renderDemoButton(product, "full-button");
 
   els.productDialog.innerHTML = `
     <div class="product-detail">
@@ -396,6 +480,7 @@ async function openProductDetail(id) {
         <ul class="spec-list">${specs || "<li>Aucune caracteristique</li>"}</ul>
         <h3>Tags</h3>
         <ul class="tag-list">${tags || "<li>Non defini</li>"}</ul>
+        ${demoButton}
         <button class="primary-button full-button" type="button" data-action="add-cart" data-id="${product.id}" ${
           product.stock <= 0 ? "disabled" : ""
         }>Ajouter au panier</button>
@@ -489,6 +574,7 @@ function fillProductForm(product) {
   productFields.oldPrice.value = product.oldPrice || "";
   productFields.stock.value = product.stock;
   productFields.image.value = product.image;
+  productFields.video.value = product.videoUrl || "";
   productFields.shortDescription.value = product.shortDescription;
   productFields.description.value = product.description;
   productFields.specs.value = product.specs.join("\n");
@@ -556,6 +642,7 @@ function collectProductForm() {
     oldPrice: productFields.oldPrice.value ? Number(productFields.oldPrice.value) : null,
     stock: Number(productFields.stock.value || 0),
     image: productFields.image.value,
+    videoUrl: productFields.video.value,
     shortDescription: productFields.shortDescription.value,
     description: productFields.description.value,
     specs: productFields.specs.value
@@ -732,6 +819,7 @@ function bindEvents() {
     const { action, id } = button.dataset;
 
     if (action === "details") await openProductDetail(id);
+    if (action === "demo") await openProductDemo(id);
     if (action === "add-cart") addToCart(id);
     if (action === "cart-inc") changeCartQuantity(id, 1);
     if (action === "cart-dec") changeCartQuantity(id, -1);
@@ -773,6 +861,9 @@ function bindEvents() {
     }
   });
   els.checkoutForm.addEventListener("submit", submitOrder);
+  els.videoDialog.addEventListener("close", () => {
+    els.videoDialog.innerHTML = "";
+  });
   productFields.image.addEventListener("input", updateImagePreview);
   productFields.imageFile.addEventListener("change", async () => {
     const file = productFields.imageFile.files[0];

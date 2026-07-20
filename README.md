@@ -35,12 +35,14 @@ Puis ouvrir :
 - filtres par categorie et prix ;
 - tri par nouveaute, prix, note, stock et nom ;
 - fiche detail article ;
+- bouton Demo optionnel par produit avec lecteur video integre ;
 - panier avec quantites modifiables ;
 - creation de commande ;
 - administration produit ;
 - ajout, modification et suppression d'articles ;
 - modification de l'image par URL dans l'administration ;
 - choix d'une image locale depuis le PC, convertie et sauvegardee avec l'article ;
+- ajout d'une URL de video demo dans l'administration ;
 - ajout, modification et suppression des categories ;
 - renommage d'une categorie avec mise a jour automatique des articles associes ;
 - prix affiches en Ariary `Ar` ;

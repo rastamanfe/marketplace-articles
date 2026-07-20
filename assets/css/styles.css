@@ -438,7 +438,7 @@ main {
 
 .card-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 8px;
   margin-top: 3px;
 }
@@ -676,6 +676,24 @@ dialog::backdrop {
 .tag-list li {
   background: #f7f0df;
   color: #664506;
+}
+
+.video-dialog {
+  width: min(980px, calc(100vw - 30px));
+}
+
+.video-box {
+  display: grid;
+  gap: 14px;
+}
+
+.demo-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 8px;
+  background: #101820;
+  object-fit: contain;
 }
 
 .checkout-box {

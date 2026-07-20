@@ -188,6 +188,11 @@
                 <input id="productImageFile" type="file" accept="image/*" />
               </label>
 
+              <label>
+                Video demo URL
+                <input id="productVideo" type="text" placeholder="https://... YouTube, MP4, WebM ou autre lien video" />
+              </label>
+
               <div class="image-preview" id="productImagePreview">
                 <span>Aucune image selectionnee</span>
               </div>
@@ -305,6 +310,7 @@
     </div>
 
     <dialog class="product-dialog" id="productDialog"></dialog>
+    <dialog class="video-dialog" id="videoDialog"></dialog>
 
     <dialog class="checkout-dialog" id="checkoutDialog">
       <form method="dialog" class="checkout-box" id="checkoutForm">
