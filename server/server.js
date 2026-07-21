@@ -785,8 +785,10 @@ async function listProducts(db, url) {
   return (await db.all(sql, params)).map(rowToProduct);
 }
 
-async function getProduct(db, id) {
-  return rowToProduct(await db.get("SELECT * FROM products WHERE id = ?", [id]), { includeVideo: true });
+async function getProduct(db, id, options = {}) {
+  return rowToProduct(await db.get("SELECT * FROM products WHERE id = ?", [id]), {
+    includeVideo: Boolean(options.includeVideo),
+  });
 }
 
 async function deleteOrder(db, id) {
@@ -865,7 +867,8 @@ async function handleApi(db, req, res, url) {
 
   const productMatch = url.pathname.match(/^\/api\/products\/(\d+)$/);
   if (req.method === "GET" && productMatch) {
-    const product = await getProduct(db, Number(productMatch[1]));
+    const includeVideo = ["1", "true", "yes"].includes((url.searchParams.get("includeVideo") || "").toLowerCase());
+    const product = await getProduct(db, Number(productMatch[1]), { includeVideo });
     product ? json(res, 200, product) : notFound(res);
     return;
   }
@@ -874,19 +877,19 @@ async function handleApi(db, req, res, url) {
     if (!requireAdmin(req, res)) return;
     const input = normalizeProductInput(await readBody(req));
     const id = await insertProduct(db, input);
-    json(res, 201, await getProduct(db, id));
+    json(res, 201, await getProduct(db, id, { includeVideo: true }));
     return;
   }
 
   if (req.method === "PUT" && productMatch) {
     if (!requireAdmin(req, res)) return;
     const id = Number(productMatch[1]);
-    const current = await getProduct(db, id);
+    const current = await getProduct(db, id, { includeVideo: true });
     if (!current) return notFound(res);
 
     const input = normalizeProductInput(await readBody(req), current);
     await updateProduct(db, id, input);
-    json(res, 200, await getProduct(db, id));
+    json(res, 200, await getProduct(db, id, { includeVideo: true }));
     return;
   }
 
