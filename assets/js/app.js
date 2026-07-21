@@ -433,14 +433,39 @@ function renderDemoButton(product, extraClass = "") {
   return `<button class="${className}" type="button" data-action="demo" data-id="${product.id}">Demo</button>`;
 }
 
-async function openProductDemo(id) {
-  const product = await getProduct(id, { includeVideo: true });
-  const videoUrl = normalizeDemoVideoUrl(product.videoUrl);
-  if (!videoUrl) {
-    showToast("Aucune video demo valide pour cet article");
+function setDemoButtonLoading(button, isLoading) {
+  if (!button) return;
+  if (isLoading) {
+    button.dataset.originalLabel = button.textContent;
+    button.textContent = "Chargement...";
+    button.disabled = true;
     return;
   }
+  button.textContent = button.dataset.originalLabel || "Demo";
+  button.disabled = false;
+  delete button.dataset.originalLabel;
+}
 
+function renderDemoLoading(product) {
+  els.videoDialog.innerHTML = `
+    <div class="video-box">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">${escapeHtml(product?.category || "Demo")}</p>
+          <h2>${product?.name ? `Demo ${escapeHtml(product.name)}` : "Demo video"}</h2>
+        </div>
+        <form method="dialog"><button class="icon-button" type="submit">X</button></form>
+      </div>
+      <div class="video-loading" role="status" aria-live="polite">
+        <span class="loading-spinner" aria-hidden="true"></span>
+        <strong>Chargement de la video...</strong>
+      </div>
+    </div>
+  `;
+  if (!els.videoDialog.open) els.videoDialog.showModal();
+}
+
+function renderDemoPlayer(product, videoUrl) {
   const player = isDirectVideoUrl(videoUrl)
     ? `<video class="demo-video" src="${escapeHtml(videoUrl)}" controls autoplay></video>`
     : `<iframe class="demo-video" src="${escapeHtml(videoUrl)}" title="Video demo ${escapeHtml(
@@ -459,7 +484,41 @@ async function openProductDemo(id) {
       ${player}
     </div>
   `;
-  els.videoDialog.showModal();
+}
+
+function renderDemoError(message) {
+  els.videoDialog.innerHTML = `
+    <div class="video-box">
+      <div class="section-title">
+        <h2>Demo video</h2>
+        <form method="dialog"><button class="icon-button" type="submit">X</button></form>
+      </div>
+      <div class="video-loading">
+        <strong>${escapeHtml(message)}</strong>
+      </div>
+    </div>
+  `;
+  if (!els.videoDialog.open) els.videoDialog.showModal();
+}
+
+async function openProductDemo(id, triggerButton) {
+  const cached = findProduct(id);
+  renderDemoLoading(cached);
+  setDemoButtonLoading(triggerButton, true);
+
+  try {
+    const product = await getProduct(id, { includeVideo: true });
+    const videoUrl = normalizeDemoVideoUrl(product.videoUrl);
+    if (!videoUrl) {
+      throw new Error("Aucune video demo valide pour cet article");
+    }
+    renderDemoPlayer(product, videoUrl);
+  } catch (error) {
+    renderDemoError(error.message);
+    showToast(error.message);
+  } finally {
+    setDemoButtonLoading(triggerButton, false);
+  }
 }
 
 async function openProductDetail(id) {
@@ -842,7 +901,7 @@ function bindEvents() {
     const { action, id } = button.dataset;
 
     if (action === "details") await openProductDetail(id);
-    if (action === "demo") await openProductDemo(id);
+    if (action === "demo") await openProductDemo(id, button);
     if (action === "add-cart") addToCart(id);
     if (action === "cart-inc") changeCartQuantity(id, 1);
     if (action === "cart-dec") changeCartQuantity(id, -1);

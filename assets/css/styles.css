@@ -687,6 +687,32 @@ dialog::backdrop {
   object-fit: contain;
 }
 
+.video-loading {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  gap: 12px;
+  border-radius: 8px;
+  background: #f5f8fa;
+  color: var(--ink);
+  text-align: center;
+}
+
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border: 4px solid #dbe6ec;
+  border-top-color: var(--teal);
+  border-radius: 50%;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .checkout-box {
   display: grid;
   gap: 13px;
