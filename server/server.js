@@ -170,9 +170,9 @@ function parseJsonList(value) {
   }
 }
 
-function rowToProduct(row) {
+function rowToProduct(row, options = {}) {
   if (!row) return null;
-  return {
+  const product = {
     id: Number(row.id),
     name: row.name,
     slug: row.slug,
@@ -185,7 +185,7 @@ function rowToProduct(row) {
     rating: Number(row.rating),
     reviews: Number(row.reviews),
     image: row.image,
-    videoUrl: row.video_url || "",
+    hasDemo: Boolean(row.video_url || row.has_demo),
     shortDescription: row.short_description,
     description: row.description,
     specs: parseJsonList(row.specs),
@@ -193,6 +193,8 @@ function rowToProduct(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if (options.includeVideo) product.videoUrl = row.video_url || "";
+  return product;
 }
 
 function toPgPlaceholders(sql) {
@@ -771,7 +773,11 @@ async function listProducts(db, url) {
   };
 
   const sql = `
-    SELECT * FROM products
+    SELECT
+      id, name, slug, sku, brand, category, price, old_price, stock, rating, reviews,
+      image, short_description, description, specs, tags, created_at, updated_at,
+      CASE WHEN COALESCE(video_url, '') <> '' THEN 1 ELSE 0 END AS has_demo
+    FROM products
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY ${sortMap[sort] || sortMap.newest}
   `;
@@ -780,7 +786,7 @@ async function listProducts(db, url) {
 }
 
 async function getProduct(db, id) {
-  return rowToProduct(await db.get("SELECT * FROM products WHERE id = ?", [id]));
+  return rowToProduct(await db.get("SELECT * FROM products WHERE id = ?", [id]), { includeVideo: true });
 }
 
 async function deleteOrder(db, id) {

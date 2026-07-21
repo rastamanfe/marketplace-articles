@@ -371,13 +371,18 @@ function findProduct(id) {
   return state.products.find((product) => product.id === Number(id));
 }
 
-async function getProduct(id) {
+async function getProduct(id, options = {}) {
   const cached = findProduct(id);
-  return cached || request(`/api/products/${id}`);
+  if (cached && (!options.full || cached.videoUrl !== undefined)) return cached;
+
+  const product = await request(`/api/products/${id}`);
+  const index = state.products.findIndex((item) => item.id === Number(id));
+  if (index >= 0) state.products[index] = { ...state.products[index], ...product };
+  return product;
 }
 
 function productHasDemo(product) {
-  return Boolean(String(product.videoUrl || "").trim());
+  return Boolean(product.hasDemo || String(product.videoUrl || "").trim());
 }
 
 function getYouTubeEmbedUrl(url) {
@@ -427,7 +432,7 @@ function renderDemoButton(product, extraClass = "") {
 }
 
 async function openProductDemo(id) {
-  const product = await getProduct(id);
+  const product = await getProduct(id, { full: true });
   const videoUrl = normalizeDemoVideoUrl(product.videoUrl);
   if (!videoUrl) {
     showToast("Aucune video demo valide pour cet article");
@@ -456,7 +461,7 @@ async function openProductDemo(id) {
 }
 
 async function openProductDetail(id) {
-  const product = await getProduct(id);
+  const product = await getProduct(id, { full: true });
   const specs = product.specs.map((spec) => `<li>${escapeHtml(spec)}</li>`).join("");
   const tags = product.tags.map((tag) => `<li>${escapeHtml(tag)}</li>`).join("");
   const oldPrice = product.oldPrice ? `<span class="old-price">${money.format(product.oldPrice)}</span>` : "";
@@ -840,7 +845,7 @@ function bindEvents() {
     if (action === "cart-inc") changeCartQuantity(id, 1);
     if (action === "cart-dec") changeCartQuantity(id, -1);
     if (action === "cart-remove") removeCartItem(id);
-    if (action === "edit-product") fillProductForm(await getProduct(id));
+    if (action === "edit-product") fillProductForm(await getProduct(id, { full: true }));
     if (action === "delete-product") await deleteProduct(id);
     if (action === "delete-order") await deleteOrder(id);
     if (action === "edit-category") {
