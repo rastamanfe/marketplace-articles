@@ -1014,9 +1014,11 @@ function serveStatic(req, res, url) {
   const ext = path.extname(filePath).toLowerCase();
   const contentType = mimeTypes.get(ext) || "application/octet-stream";
   const file = readFileSync(filePath);
+  const cacheControl = requested === "/index.html" ? "no-cache" : "public, max-age=31536000, immutable";
   res.writeHead(200, {
     "Content-Type": contentType,
     "Content-Length": file.length,
+    "Cache-Control": cacheControl,
   });
   res.end(file);
 }
